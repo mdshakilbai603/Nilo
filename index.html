@@ -268,9 +268,8 @@
             <p style="font-size:12px; color:#666; margin-top:8px;">Select API Engine & Query backend.</p>
             
             <select id="api-engine" class="api-select-box">
-                <option value="python">Python API (AI Engine - :5000)</option>
-                <option value="js">Node.js API (JS Engine - :3000)</option>
-                <option value="cpp">C++ API (Engine - :8080)</option>
+                <option value="js">Node.js API (JS Engine - Render Backend)</option>
+                <option value="python">Python API (Flask - :5000 Engine)</option>
             </select>
 
             <textarea id="ai-query-input" style="width:100%; height:100px; margin-top:10px; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:13px;" placeholder="Type your query..."></textarea>
@@ -316,7 +315,7 @@
         renderBookmarksBar();
 
         // ----------------------------------------------------
-        // API Call Handler Functions (JavaScript, Python, C++)
+        // Dynamic API Call Handler
         // ----------------------------------------------------
         async function submitBackendAPI() {
             const engine = document.getElementById('api-engine').value;
@@ -330,10 +329,13 @@
 
             responseBox.innerText = "Connecting to API...";
 
+            // স্বয়ংক্রিয়ভাবে বর্তমান ডোমেইন সনাক্তকরণ (Render/Localhost)
             let endpoint = '';
-            if (engine === 'python') endpoint = 'http://localhost:5000/api/ai';
-            else if (engine === 'js') endpoint = 'http://localhost:3000/api/node';
-            else if (engine === 'cpp') endpoint = 'http://localhost:8080/api/cpp';
+            if (engine === 'js') {
+                endpoint = window.location.origin + '/api/node';
+            } else if (engine === 'python') {
+                endpoint = 'http://localhost:5000/api/ai';
+            }
 
             try {
                 const res = await fetch(endpoint, {
@@ -344,7 +346,7 @@
                 const data = await res.json();
                 responseBox.innerText = `[${engine.toUpperCase()} Response]: ` + JSON.stringify(data.reply || data);
             } catch (err) {
-                responseBox.innerText = `Error connecting to ${engine.toUpperCase()} Backend API (Make sure server is running).`;
+                responseBox.innerText = `Error connecting to ${engine.toUpperCase()} Backend API.`;
             }
         }
 
@@ -371,7 +373,11 @@
             } else {
                 const iframeEl = document.createElement('iframe');
                 iframeEl.id = tabId;
-                iframeEl.src = url;
+                
+                // Proxy দিয়ে ওয়েবসাইট লোড করা হচ্ছে যেন Frame Security ব্লক না করে
+                const proxiedUrl = url.startsWith('http') ? (window.location.origin + '/proxy?url=' + encodeURIComponent(url)) : url;
+                iframeEl.src = proxiedUrl;
+                
                 viewsContainer.appendChild(iframeEl);
 
                 if (!historyList.includes(url)) {
@@ -386,8 +392,10 @@
 
         function navigateToUrl(url) {
             const activeView = getActiveView();
+            const proxiedUrl = url.startsWith('http') ? (window.location.origin + '/proxy?url=' + encodeURIComponent(url)) : url;
+
             if (activeView && activeView.tagName.toLowerCase() === 'iframe') {
-                activeView.src = url;
+                activeView.src = proxiedUrl;
             } else {
                 createNewTab(url);
             }
@@ -597,7 +605,12 @@
                 activeTabId = tabId;
 
                 if(currentView.tagName && currentView.tagName.toLowerCase() === 'iframe') {
-                    addressInput.value = currentView.src || '';
+                    // প্রক্সি ফ্রি আসল URL অ্যাড্রেস বারে প্রদর্শন
+                    let rawUrl = currentView.src || '';
+                    if (rawUrl.includes('/proxy?url=')) {
+                        rawUrl = decodeURIComponent(rawUrl.split('/proxy?url=')[1]);
+                    }
+                    addressInput.value = rawUrl;
                 } else {
                     addressInput.value = '';
                 }
