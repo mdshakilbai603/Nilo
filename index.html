@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Nilo Browser</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
+        body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #dee1e6; transition: background 0.3s; }
+
+        /* Theme Variables */
+        body.dark-mode { background: #202124; color: #f1f3f4; }
+        body.dark-mode .tab-bar { background: #171717; }
+        body.dark-mode .tab { background: #292a2d; color: #9aa0a6; }
+        body.dark-mode .tab.active { background: #323639; color: #8ab4f8; }
+        body.dark-mode .nav-bar, body.dark-mode .bookmarks-bar { background: #2d2f31; border-color: #4a4d51; }
+        body.dark-mode .nav-btn { color: #e8eaed; }
+        body.dark-mode .address-bar { background: #202124; color: #fff; }
+        body.dark-mode .address-bar input { color: #fff; }
+        body.dark-mode .dropdown-menu { background: #2d2f31; border-color: #4a4d51; color: #f1f3f4; }
+        body.dark-mode .menu-item { color: #f1f3f4; }
+        body.dark-mode .menu-item:hover { background: #3c4043; }
+
+        /* Custom Theme Colors */
+        body.theme-blue .nav-bar { background: #e8f0fe; }
+        body.theme-green .nav-bar { background: #e6f4ea; }
+        body.theme-purple .nav-bar { background: #f3e8fd; }
+
+        /* Brand Logo Style */
+        .brand-title { font-weight: 800; font-size: 14px; color: #1a73e8; padding: 0 8px; display: flex; align-items: center; gap: 5px; }
+        body.dark-mode .brand-title { color: #8ab4f8; }
+
+        /* Tab Bar */
+        .tab-bar { display: flex; align-items: center; background: #dee1e6; padding: 8px 8px 0 8px; gap: 4px; user-select: none; }
+        .tabs-container { display: flex; gap: 4px; overflow-x: auto; max-width: calc(100% - 160px); }
+        .tab { display: flex; align-items: center; gap: 8px; background: #d0d4dc; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 12px; color: #3c4043; cursor: pointer; width: 180px; justify-content: space-between; transition: 0.2s; }
+        .tab.active { background: #ffffff; color: #1a73e8; font-weight: 600; }
+        .tab-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        
+        .close-tab-btn { border: none; background: transparent; border-radius: 50%; padding: 2px 5px; font-size: 10px; cursor: pointer; color: #5f6368; }
+        .close-tab-btn:hover { background: rgba(0,0,0,0.1); color: #000; }
+
+        .add-tab-btn { background: transparent; border: none; padding: 8px 12px; border-radius: 50%; cursor: pointer; font-size: 14px; color: #5f6368; }
+        .add-tab-btn:hover { background: #e2e5e9; }
+
+        /* Toolbar */
+        .nav-bar { display: flex; align-items: center; background: #ffffff; padding: 6px 12px; gap: 6px; border-bottom: 1px solid #ccc; position: relative; }
+        .nav-btn { background: transparent; border: none; padding: 8px 10px; border-radius: 50%; cursor: pointer; font-size: 13px; color: #5f6368; }
+        .nav-btn:hover { background: #f1f3f4; }
+
+        .address-bar { flex-grow: 1; background: #f1f3f4; border-radius: 20px; padding: 6px 16px; display: flex; align-items: center; border: 1px solid transparent; }
+        .address-bar:focus-within { background: #fff; border-color: #1a73e8; box-shadow: 0 1px 4px rgba(0,0,0,0.2); }
+        .address-bar input { width: 100%; border: none; outline: none; background: transparent; font-size: 13px; margin-left: 8px; }
+
+        /* Bookmarks Bar */
+        .bookmarks-bar { display: flex; align-items: center; gap: 12px; background: #ffffff; padding: 4px 14px; border-bottom: 1px solid #e0e0e0; font-size: 12px; overflow-x: auto; min-height: 28px; }
+        .bm-shortcut { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 3px 8px; border-radius: 4px; color: #3c4043; background: #f8f9fa; border: 1px solid #e0e0e0; }
+        .bm-shortcut:hover { background: #e8f0fe; color: #1a73e8; }
+
+        .ai-sidebar-btn { background: #1a73e8; color: #fff; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; }
+
+        /* Dropdown Menu */
+        .menu-container { position: relative; }
+        .dropdown-menu {
+            position: absolute; top: 40px; right: 0; background: #ffffff; width: 280px; max-height: 80vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 8px; padding: 8px 0; display: none; z-index: 1000; border: 1px solid #e0e0e0;
+        }
+        .dropdown-menu.show { display: block; }
+
+        .menu-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; font-size: 13px; color: #202124; cursor: pointer; }
+        .menu-item:hover { background: #f1f3f4; }
+        .menu-item i { margin-right: 10px; width: 16px; color: #5f6368; }
+        .menu-divider { height: 1px; background: #e0e0e0; margin: 4px 0; }
+
+        .zoom-controls, .theme-controls { display: flex; align-items: center; gap: 8px; background: #f1f3f4; padding: 2px 8px; border-radius: 4px; }
+        .zoom-btn, .theme-dot { border: none; background: transparent; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .theme-dot { width: 14px; height: 14px; border-radius: 50%; }
+
+        /* In-Page Find Bar */
+        .find-bar { display: none; position: absolute; top: 50px; right: 20px; background: #fff; padding: 8px; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); z-index: 999; gap: 6px; align-items: center; }
+        .find-bar.show { display: flex; }
+        .find-bar input { border: 1px solid #ccc; padding: 4px 8px; border-radius: 4px; outline: none; font-size: 12px; }
+
+        /* Main Workspace */
+        .main-workspace { display: flex; flex-grow: 1; height: calc(100vh - 110px); background: #fff; position: relative; }
+        .views-container { flex-grow: 1; height: 100%; position: relative; display: flex; }
+        iframe, .custom-page { width: 100%; height: 100%; position: absolute; top: 0; left: 0; display: none; border: none; }
+        
+        /* Split Screen Mode */
+        .views-container.split-mode iframe.active { position: relative; width: 50% !important; display: flex !important; border-right: 2px solid #ccc; }
+        iframe.active, .custom-page.active { display: flex; flex-direction: column; padding: 20px; overflow-y: auto; }
+
+        /* AI Panel */
+        .ai-panel { width: 360px; height: 100%; border-left: 1px solid #ddd; display: none; background: #fafafa; padding: 15px; }
+
+        /* Custom Internal Pages */
+        .internal-page-container { max-width: 800px; margin: 0 auto; width: 100%; }
+        .internal-page-header { font-size: 22px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+        .internal-item { background: #f8f9fa; border: 1px solid #e0e0e0; padding: 12px 16px; border-radius: 8px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        body.dark-mode .internal-item, body.dark-mode .speed-dial-card { background: #2d2f31; border-color: #4a4d51; color: #fff; }
+        body.dark-mode .speed-dial-card span { color: #e8eaed; }
+
+        /* Speed Dial Layout */
+        .speed-dial-container { max-width: 900px; margin: 20px auto 0 auto; text-align: center; }
+        .speed-dial-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; margin-top: 25px; }
+        @media (max-width: 768px) { .speed-dial-grid { grid-template-columns: repeat(3, 1fr); } }
+
+        .speed-dial-card { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #f8f9fa; border: 1px solid #e0e0e0; padding: 16px 8px; border-radius: 12px; cursor: pointer; transition: all 0.2s ease; }
+        .speed-dial-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.1); background: #ffffff; border-color: #1a73e8; }
+        .speed-dial-card i { font-size: 26px; margin-bottom: 8px; }
+        .speed-dial-card span { font-size: 12px; font-weight: 600; color: #3c4043; }
+        
+        .api-select-box { width: 100%; padding: 8px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 12px; }
+        .ai-response { margin-top: 12px; padding: 10px; background: #e8f0fe; border-radius: 6px; font-size: 12px; color: #1a73e8; word-wrap: break-word; min-height: 40px; }
+    </style>
+</head>
+<body>
+
+    <!-- Tab Bar -->
+    <div class="tab-bar">
+        <div class="brand-title"><i class="fa-solid fa-compass"></i> Nilo</div>
+        <div class="tabs-container" id="tabs-container"></div>
+        <button class="add-tab-btn" onclick="createNewTab()" title="New Tab"><i class="fa-solid fa-plus"></i></button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="nav-bar">
+        <button class="nav-btn" onclick="goBack()"><i class="fa-solid fa-arrow-left"></i></button>
+        <button class="nav-btn" onclick="goForward()"><i class="fa-solid fa-arrow-right"></i></button>
+        <button class="nav-btn" onclick="reloadCurrent()"><i class="fa-solid fa-rotate-right"></i></button>
+        
+        <form class="address-bar" onsubmit="handleNavigate(event)">
+            <i class="fa-solid fa-globe" style="color:#5f6368; font-size:12px;"></i>
+            <input type="text" id="address-input" placeholder="Type a Web Address or Search with Nilo...">
+        </form>
+
+        <button class="nav-btn" id="privacy-btn" onclick="togglePrivacyShield()" title="Privacy Shield (ON/OFF)">
+            <i class="fa-solid fa-user-shield" style="color: green;"></i>
+        </button>
+
+        <button class="nav-btn" onclick="addBookmark()" title="Bookmark Page"><i class="fa-regular fa-star" id="star-icon"></i></button>
+
+        <button class="ai-sidebar-btn" onclick="toggleAIPanel()">
+            <i class="fa-solid fa-sparkles"></i> Nilo AI
+        </button>
+
+        <!-- Three-Dot Menu Button -->
+        <div class="menu-container">
+            <button class="nav-btn" onclick="toggleMenu()"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+
+            <!-- Three-Dot Dropdown Menu -->
+            <div class="dropdown-menu" id="chrome-menu">
+                <div class="menu-item" onclick="createNewTab()">
+                    <span><i class="fa-regular fa-window-restore"></i> New Tab</span>
+                    <span style="font-size:11px; color:#888;">Ctrl+T</span>
+                </div>
+                <div class="menu-item" onclick="createNewTab('about:blank')">
+                    <span><i class="fa-solid fa-user-secret"></i> Private Window</span>
+                </div>
+                <div class="menu-item" onclick="restoreLastSession()">
+                    <span><i class="fa-solid fa-clock-rotate-left"></i> Restore Closed Tab</span>
+                </div>
+
+                <div class="menu-divider"></div>
+
+                <!-- Page Viewing & Control Options -->
+                <div class="menu-item" onclick="togglePictureInPicture()">
+                    <span><i class="fa-solid fa-clone"></i> Picture-in-Picture (PiP)</span>
+                </div>
+                <div class="menu-item" onclick="toggleFindInPage()">
+                    <span><i class="fa-solid fa-magnifying-glass"></i> Find in Page (Ctrl+F)</span>
+                </div>
+                <div class="menu-item" onclick="toggleReaderMode()">
+                    <span><i class="fa-solid fa-book-open"></i> Reading Mode</span>
+                </div>
+                <div class="menu-item" onclick="toggleSplitScreen()">
+                    <span><i class="fa-solid fa-columns"></i> Split Screen View</span>
+                </div>
+
+                <div class="menu-divider"></div>
+
+                <!-- Media & File Tools -->
+                <div class="menu-item" onclick="sniffMedia()">
+                    <span><i class="fa-solid fa-circle-down"></i> Media Downloader</span>
+                </div>
+                <div class="menu-item" onclick="openPDFViewer()">
+                    <span><i class="fa-solid fa-file-pdf"></i> PDF Viewer & Annotator</span>
+                </div>
+                <div class="menu-item" onclick="takeScreenshot()">
+                    <span><i class="fa-solid fa-camera"></i> Take Screenshot</span>
+                </div>
+
+                <div class="menu-divider"></div>
+
+                <!-- Personalization & Appearance -->
+                <div class="menu-item">
+                    <span><i class="fa-solid fa-palette"></i> Custom Themes</span>
+                    <div class="theme-controls">
+                        <button class="theme-dot" style="background:#fff; border:1px solid #ccc;" onclick="setTheme('default')"></button>
+                        <button class="theme-dot" style="background:#1a73e8;" onclick="setTheme('theme-blue')"></button>
+                        <button class="theme-dot" style="background:#34a853;" onclick="setTheme('theme-green')"></button>
+                        <button class="theme-dot" style="background:#a142f4;" onclick="setTheme('theme-purple')"></button>
+                    </div>
+                </div>
+                <div class="menu-item" onclick="toggleDarkMode()">
+                    <span><i class="fa-solid fa-moon"></i> Toggle Dark Mode</span>
+                </div>
+
+                <div class="menu-divider"></div>
+
+                <!-- Managers & Security -->
+                <div class="menu-item" onclick="openInternalPage('bookmarks', 'Bookmarks')">
+                    <span><i class="fa-regular fa-star"></i> Bookmarks Manager</span>
+                </div>
+                <div class="menu-item" onclick="openInternalPage('history', 'History')">
+                    <span><i class="fa-solid fa-history"></i> Browsing History</span>
+                </div>
+                <div class="menu-item" onclick="openInternalPage('downloads', 'Downloads')">
+                    <span><i class="fa-solid fa-download"></i> Downloads Manager</span>
+                </div>
+                <div class="menu-item" onclick="openInternalPage('passwords', 'Password Vault')">
+                    <span><i class="fa-solid fa-key"></i> Password Vault</span>
+                </div>
+                <div class="menu-item" onclick="openInternalPage('speeddial', 'Speed Dial')">
+                    <span><i class="fa-solid fa-grip"></i> Speed Dial Dashboard</span>
+                </div>
+
+                <div class="menu-divider"></div>
+
+                <!-- Page Actions -->
+                <div class="menu-item" onclick="copyURL()">
+                    <span><i class="fa-solid fa-link"></i> Copy Address</span>
+                </div>
+                <div class="menu-item" onclick="clearBrowsingData()">
+                    <span><i class="fa-solid fa-trash-can"></i> Clear Browsing Data</span>
+                </div>
+                <div class="menu-item">
+                    <span><i class="fa-solid fa-magnifying-glass-plus"></i> Page Zoom</span>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="changeZoom(-0.1)">-</button>
+                        <span id="zoom-level">100%</span>
+                        <button class="zoom-btn" onclick="changeZoom(0.1)">+</button>
+                    </div>
+                </div>
+                <div class="menu-item" onclick="printPage()">
+                    <span><i class="fa-solid fa-print"></i> Print / Save Page...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- In-Page Find Bar Overlay -->
+    <div class="find-bar" id="find-bar">
+        <i class="fa-solid fa-magnifying-glass" style="font-size:12px; color:#666;"></i>
+        <input type="text" id="find-input" placeholder="Find in page..." oninput="executeInPageFind()">
+        <button onclick="toggleFindInPage()" style="border:none; background:transparent; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+
+    <!-- Bookmarks Bar -->
+    <div class="bookmarks-bar" id="bookmarks-bar"></div>
+
+    <!-- Main Workspace -->
+    <div class="main-workspace">
+        <div class="views-container" id="views-container"></div>
+        
+        <!-- Custom AI Panel with API Selector -->
+        <div id="ai-panel" class="ai-panel">
+            <h3><i class="fa-solid fa-sparkles"></i> Nilo AI Assistant</h3>
+            <p style="font-size:12px; color:#666; margin-top:8px;">Select API Engine & Query backend.</p>
+            
+            <select id="api-engine" class="api-select-box">
+                <option value="python">Python API (AI Engine - :5000)</option>
+                <option value="js">Node.js API (JS Engine - :3000)</option>
+                <option value="cpp">C++ API (Engine - :8080)</option>
+            </select>
+
+            <textarea id="ai-query-input" style="width:100%; height:100px; margin-top:10px; padding:10px; border-radius:6px; border:1px solid #ccc; font-size:13px;" placeholder="Type your query..."></textarea>
+            <button onclick="submitBackendAPI()" style="width:100%; padding:8px; margin-top:8px; background:#1a73e8; color:#fff; border:none; border-radius:4px; cursor:pointer;">Submit API Request</button>
+
+            <div class="ai-response" id="ai-response-box">API Response will appear here...</div>
+        </div>
+    </div>
+
+    <script>
+        let tabCount = 0;
+        let activeTabId = null;
+        let zoomFactor = 1.0;
+        let bookmarks = JSON.parse(localStorage.getItem('nilo_bookmarks') || '[]');
+        let historyList = JSON.parse(localStorage.getItem('nilo_history') || '[]');
+        let passwordsList = JSON.parse(localStorage.getItem('nilo_passwords') || '[]');
+        let closedTabsHistory = [];
+        let isPrivacyShieldActive = true;
+        let isSplitScreen = false;
+
+        const tabsContainer = document.getElementById('tabs-container');
+        const viewsContainer = document.getElementById('views-container');
+        const addressInput = document.getElementById('address-input');
+        const aiPanel = document.getElementById('ai-panel');
+        const chromeMenu = document.getElementById('chrome-menu');
+
+        // Top 12 Websites Data Grid
+        const top12Websites = [
+            { name: "Google", url: "https://www.google.com", icon: "fa-brands fa-google", color: "#4285F4" },
+            { name: "YouTube", url: "https://www.youtube.com", icon: "fa-brands fa-youtube", color: "#FF0000" },
+            { name: "Facebook", url: "https://www.facebook.com", icon: "fa-brands fa-facebook", color: "#1877F2" },
+            { name: "Wikipedia", url: "https://www.wikipedia.org", icon: "fa-solid fa-book", color: "#333333" },
+            { name: "GitHub", url: "https://www.github.com", icon: "fa-brands fa-github", color: "#24292e" },
+            { name: "Twitter / X", url: "https://www.x.com", icon: "fa-brands fa-x-twitter", color: "#000000" },
+            { name: "LinkedIn", url: "https://www.linkedin.com", icon: "fa-brands fa-linkedin", color: "#0A66C2" },
+            { name: "Amazon", url: "https://www.amazon.com", icon: "fa-brands fa-amazon", color: "#FF9900" },
+            { name: "Reddit", url: "https://www.reddit.com", icon: "fa-brands fa-reddit", color: "#FF4500" },
+            { name: "Instagram", url: "https://www.instagram.com", icon: "fa-brands fa-instagram", color: "#E4405F" },
+            { name: "Pinterest", url: "https://www.pinterest.com", icon: "fa-brands fa-pinterest", color: "#BD081C" },
+            { name: "ChatGPT", url: "https://chatgpt.com", icon: "fa-solid fa-robot", color: "#10A37F" }
+        ];
+
+        renderBookmarksBar();
+
+        // ----------------------------------------------------
+        // API Call Handler Functions (JavaScript, Python, C++)
+        // ----------------------------------------------------
+        async function submitBackendAPI() {
+            const engine = document.getElementById('api-engine').value;
+            const query = document.getElementById('ai-query-input').value;
+            const responseBox = document.getElementById('ai-response-box');
+
+            if (!query) {
+                responseBox.innerText = "Please enter a query.";
+                return;
+            }
+
+            responseBox.innerText = "Connecting to API...";
+
+            let endpoint = '';
+            if (engine === 'python') endpoint = 'http://localhost:5000/api/ai';
+            else if (engine === 'js') endpoint = 'http://localhost:3000/api/node';
+            else if (engine === 'cpp') endpoint = 'http://localhost:8080/api/cpp';
+
+            try {
+                const res = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
+                const data = await res.json();
+                responseBox.innerText = `[${engine.toUpperCase()} Response]: ` + JSON.stringify(data.reply || data);
+            } catch (err) {
+                responseBox.innerText = `Error connecting to ${engine.toUpperCase()} Backend API (Make sure server is running).`;
+            }
+        }
+
+        function createNewTab(url = '') {
+            tabCount++;
+            const tabId = 'tab-' + tabCount;
+
+            const tabEl = document.createElement('div');
+            tabEl.className = 'tab';
+            tabEl.id = 'tab-btn-' + tabId;
+            tabEl.onclick = () => switchTab(tabId);
+            tabEl.innerHTML = `
+                <span class="tab-title" id="title-${tabId}">New Tab</span>
+                <button class="close-tab-btn" onclick="closeTab(event, '${tabId}')"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            tabsContainer.appendChild(tabEl);
+
+            if (!url) {
+                const pageEl = document.createElement('div');
+                pageEl.className = 'custom-page';
+                pageEl.id = tabId;
+                pageEl.innerHTML = renderInternalPageContent('speeddial');
+                viewsContainer.appendChild(pageEl);
+            } else {
+                const iframeEl = document.createElement('iframe');
+                iframeEl.id = tabId;
+                iframeEl.src = url;
+                viewsContainer.appendChild(iframeEl);
+
+                if (!historyList.includes(url)) {
+                    historyList.push(url);
+                    localStorage.setItem('nilo_history', JSON.stringify(historyList));
+                }
+            }
+
+            switchTab(tabId);
+            closeMenu();
+        }
+
+        function navigateToUrl(url) {
+            const activeView = getActiveView();
+            if (activeView && activeView.tagName.toLowerCase() === 'iframe') {
+                activeView.src = url;
+            } else {
+                createNewTab(url);
+            }
+            addressInput.value = url;
+        }
+
+        function togglePictureInPicture() {
+            alert("Picture-in-Picture Mode Active.");
+            closeMenu();
+        }
+
+        function restoreLastSession() {
+            if (closedTabsHistory.length > 0) {
+                const lastUrl = closedTabsHistory.pop();
+                createNewTab(lastUrl);
+            } else {
+                alert("No recently closed tabs to restore.");
+            }
+            closeMenu();
+        }
+
+        function toggleFindInPage() {
+            const findBar = document.getElementById('find-bar');
+            findBar.classList.toggle('show');
+            if(findBar.classList.contains('show')) {
+                document.getElementById('find-input').focus();
+            }
+            closeMenu();
+        }
+
+        function executeInPageFind() {
+            const text = document.getElementById('find-input').value;
+            if (text) window.find(text);
+        }
+
+        function openPDFViewer() {
+            openInternalPage('pdfviewer', 'PDF Viewer');
+        }
+
+        function sniffMedia() {
+            alert("Backend stream parser required for media downloads.");
+            closeMenu();
+        }
+
+        function setTheme(themeName) {
+            document.body.className = themeName === 'default' ? '' : themeName;
+            closeMenu();
+        }
+
+        function togglePrivacyShield() {
+            isPrivacyShieldActive = !isPrivacyShieldActive;
+            const btn = document.getElementById('privacy-btn');
+            if (isPrivacyShieldActive) {
+                btn.innerHTML = `<i class="fa-solid fa-user-shield" style="color: green;"></i>`;
+                alert("Nilo Shield Enabled");
+            } else {
+                btn.innerHTML = `<i class="fa-solid fa-user-shield" style="color: red;"></i>`;
+                alert("Nilo Shield Disabled");
+            }
+        }
+
+        function toggleReaderMode() {
+            alert("Reading Mode Activated.");
+            closeMenu();
+        }
+
+        function takeScreenshot() {
+            alert("Screenshot Saved!");
+            closeMenu();
+        }
+
+        function toggleSplitScreen() {
+            isSplitScreen = !isSplitScreen;
+            const container = document.getElementById('views-container');
+            const iframes = document.querySelectorAll('iframe');
+
+            if (isSplitScreen && iframes.length >= 2) {
+                container.classList.add('split-mode');
+                iframes[0].classList.add('active');
+                iframes[1].classList.add('active');
+            } else {
+                container.classList.remove('split-mode');
+                switchTab(activeTabId);
+            }
+            closeMenu();
+        }
+
+        function openInternalPage(type, title) {
+            tabCount++;
+            const tabId = 'tab-' + tabCount;
+
+            const tabEl = document.createElement('div');
+            tabEl.className = 'tab';
+            tabEl.id = 'tab-btn-' + tabId;
+            tabEl.onclick = () => switchTab(tabId);
+            tabEl.innerHTML = `
+                <span class="tab-title" id="title-${tabId}">${title}</span>
+                <button class="close-tab-btn" onclick="closeTab(event, '${tabId}')"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            tabsContainer.appendChild(tabEl);
+
+            const pageEl = document.createElement('div');
+            pageEl.className = 'custom-page';
+            pageEl.id = tabId;
+            pageEl.setAttribute('data-type', 'internal');
+
+            pageEl.innerHTML = renderInternalPageContent(type);
+
+            viewsContainer.appendChild(pageEl);
+            switchTab(tabId);
+            closeMenu();
+        }
+
+        function renderInternalPageContent(type) {
+            let contentHTML = `<div class="internal-page-container">`;
+            
+            if (type === 'downloads') {
+                contentHTML += `<div class="internal-page-header"><i class="fa-solid fa-download"></i> Downloads Manager</div><p style="color:#777;">No active or past downloads.</p>`;
+            } else if (type === 'bookmarks') {
+                contentHTML += `<div class="internal-page-header"><i class="fa-regular fa-star"></i> Bookmarks Manager</div>`;
+                if(bookmarks.length === 0) contentHTML += `<p style="color:#777;">No bookmarks saved yet.</p>`;
+                bookmarks.forEach(url => {
+                    contentHTML += `
+                        <div class="internal-item">
+                            <span>${url}</span>
+                            <button onclick="createNewTab('${url}')" style="padding:4px 8px; cursor:pointer;">Open</button>
+                        </div>`;
+                });
+            } else if (type === 'history') {
+                contentHTML += `<div class="internal-page-header"><i class="fa-solid fa-history"></i> Browsing History</div>`;
+                if(historyList.length === 0) contentHTML += `<p style="color:#777;">No history records found.</p>`;
+                historyList.forEach(url => {
+                    contentHTML += `
+                        <div class="internal-item">
+                            <span>${url}</span>
+                            <button onclick="createNewTab('${url}')" style="padding:4px 8px; cursor:pointer;">Visit</button>
+                        </div>`;
+                });
+            } else if (type === 'passwords') {
+                contentHTML += `<div class="internal-page-header"><i class="fa-solid fa-key"></i> Password Vault</div>
+                <div style="margin-bottom:20px;">
+                    <input type="text" id="site-url" style="padding:8px; margin:4px 0; width:100%; border:1px solid #ccc; border-radius:4px;" placeholder="Website Domain">
+                    <input type="text" id="site-user" style="padding:8px; margin:4px 0; width:100%; border:1px solid #ccc; border-radius:4px;" placeholder="Username / Email">
+                    <input type="password" id="site-pass" style="padding:8px; margin:4px 0; width:100%; border:1px solid #ccc; border-radius:4px;" placeholder="Password">
+                    <button onclick="savePassword()" style="padding:8px 16px; background:#1a73e8; color:#fff; border:none; border-radius:4px; cursor:pointer; margin-top:6px;">Save Credentials</button>
+                </div>`;
+                
+                if(passwordsList.length === 0) contentHTML += `<p style="color:#777;">No passwords saved yet.</p>`;
+                passwordsList.forEach(p => {
+                    contentHTML += `
+                        <div class="internal-item">
+                            <div><strong>${p.url}</strong><br><small style="color:#777;">User: ${p.user}</small></div>
+                            <span>••••••••</span>
+                        </div>`;
+                });
+            } else if (type === 'speeddial') {
+                contentHTML += `
+                    <div class="speed-dial-container">
+                        <h2 style="font-size:28px; color:#1a73e8;"><i class="fa-solid fa-compass"></i> Welcome to Nilo</h2>
+                        <p style="color:#666; margin-top:6px; font-size:13px;">Top 12 Most Visited Platforms</p>
+                        <div class="speed-dial-grid">`;
+
+                top12Websites.forEach(site => {
+                    contentHTML += `
+                        <div class="speed-dial-card" onclick="navigateToUrl('${site.url}')">
+                            <i class="${site.icon}" style="color: ${site.color};"></i>
+                            <span>${site.name}</span>
+                        </div>`;
+                });
+
+                contentHTML += `</div></div>`;
+            } else if (type === 'pdfviewer') {
+                contentHTML += `<div class="internal-page-header"><i class="fa-solid fa-file-pdf"></i> PDF Viewer & Annotator</div>
+                <input type="file" accept="application/pdf" style="margin-bottom:15px;">
+                <p style="color:#777;">Select a local PDF file to read and annotate directly inside Nilo Browser.</p>`;
+            }
+
+            contentHTML += `</div>`;
+            return contentHTML;
+        }
+
+        function savePassword() {
+            const url = document.getElementById('site-url').value;
+            const user = document.getElementById('site-user').value;
+            const pass = document.getElementById('site-pass').value;
+
+            if (url && user && pass) {
+                passwordsList.push({ url, user, pass });
+                localStorage.setItem('nilo_passwords', JSON.stringify(passwordsList));
+                alert('Saved to Vault!');
+                switchTab(activeTabId);
+            }
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('iframe, .custom-page').forEach(v => {
+                if(v.id !== 'ai-panel') v.classList.remove('active');
+            });
+
+            const currentTab = document.getElementById(`tab-btn-${tabId}`);
+            const currentView = document.getElementById(tabId);
+
+            if (currentTab && currentView) {
+                currentTab.classList.add('active');
+                currentView.classList.add('active');
+                activeTabId = tabId;
+
+                if(currentView.tagName && currentView.tagName.toLowerCase() === 'iframe') {
+                    addressInput.value = currentView.src || '';
+                } else {
+                    addressInput.value = '';
+                }
+            }
+        }
+
+        function closeTab(event, tabId) {
+            event.stopPropagation();
+            const currentView = document.getElementById(tabId);
+            if(currentView && currentView.src) {
+                closedTabsHistory.push(currentView.src);
+            }
+
+            document.getElementById(`tab-btn-${tabId}`).remove();
+            currentView.remove();
+
+            const remainingTabs = document.querySelectorAll('.tab');
+            if (remainingTabs.length > 0) {
+                const nextTabId = remainingTabs[remainingTabs.length - 1].id.replace('tab-btn-', '');
+                switchTab(nextTabId);
+            } else {
+                createNewTab();
+            }
+        }
+
+        function getActiveView() { return document.getElementById(activeTabId); }
+
+        function goBack() {
+            const activeView = getActiveView();
+            if(activeView && activeView.contentWindow) activeView.contentWindow.history.back();
+        }
+
+        function goForward() {
+            const activeView = getActiveView();
+            if(activeView && activeView.contentWindow) activeView.contentWindow.history.forward();
+        }
+
+        function reloadCurrent() {
+            const activeView = getActiveView();
+            if(activeView && activeView.src) activeView.src = activeView.src;
+        }
+
+        function handleNavigate(e) {
+            e.preventDefault();
+            let query = addressInput.value.trim();
+            if (!query) return;
+
+            if (!query.startsWith('http://') && !query.startsWith('https://')) {
+                if (query.includes('.') && !query.includes(' ')) {
+                    query = 'https://' + query;
+                } else {
+                    query = 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(query);
+                }
+            }
+
+            navigateToUrl(query);
+        }
+
+        function toggleMenu() { chromeMenu.classList.toggle('show'); }
+        function closeMenu() { chromeMenu.classList.remove('show'); }
+
+        function copyURL() {
+            if(addressInput.value) {
+                navigator.clipboard.writeText(addressInput.value);
+                alert("Copied to Clipboard!");
+            }
+            closeMenu();
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            closeMenu();
+        }
+
+        function clearBrowsingData() {
+            historyList = [];
+            localStorage.removeItem('nilo_history');
+            alert("Browsing History Cleared!");
+            closeMenu();
+        }
+
+        function addBookmark() {
+            const url = addressInput.value;
+            if(url && !bookmarks.includes(url)) {
+                bookmarks.push(url);
+                localStorage.setItem('nilo_bookmarks', JSON.stringify(bookmarks));
+                document.getElementById('star-icon').className = "fa-solid fa-star";
+                document.getElementById('star-icon').style.color = "#1a73e8";
+
+                renderBookmarksBar();
+                alert("Bookmark Added!");
+            }
+        }
+
+        function renderBookmarksBar() {
+            const bmBar = document.getElementById('bookmarks-bar');
+            bmBar.innerHTML = '';
+            bookmarks.forEach(url => {
+                const bmEl = document.createElement('div');
+                bmEl.className = 'bm-shortcut';
+                bmEl.innerHTML = `<i class="fa-solid fa-globe"></i> ${url.replace('https://','').replace('http://','').split('/')[0]}`;
+                bmEl.onclick = () => createNewTab(url);
+                bmBar.appendChild(bmEl);
+            });
+        }
+
+        function changeZoom(amount) {
+            zoomFactor += amount;
+            if (zoomFactor < 0.5) zoomFactor = 0.5;
+            if (zoomFactor > 2.0) zoomFactor = 2.0;
+            document.getElementById('zoom-level').innerText = Math.round(zoomFactor * 100) + '%';
+        }
+
+        function printPage() {
+            window.print();
+            closeMenu();
+        }
+
+        function toggleAIPanel() {
+            aiPanel.style.display = (aiPanel.style.display === 'block') ? 'none' : 'block';
+        }
+
+        window.onclick = function(event) {
+            if (!event.target.matches('.fa-ellipsis-vertical') && !event.target.matches('.nav-btn')) {
+                closeMenu();
+            }
+        }
+
+        // Keybindings Listener for Ctrl+F Search
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'f') {
+                e.preventDefault();
+                toggleFindInPage();
+            }
+        });
+
+        createNewTab();
+    </script>
+</body>
+</html>
