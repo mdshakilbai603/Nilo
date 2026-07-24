@@ -1,20 +1,27 @@
-# Base image হিসেবে Python ও Node.js দুটি সাপোর্ট করে এমন ইমেজ ব্যবহার করা হচ্ছে
+# ১. Base image: Python 3.11 এবং Node.js 18 সাপোর্ট
 FROM nikolaik/python-nodejs:python3.11-nodejs18-slim
 
-# Working directory সেট করা
+# ২. Working directory সেট করা
 WORKDIR /app
 
-# প্রজেক্টের সব ফাইল কপি করা
+# ৩. আগে ডিপেন্ডেন্সি ফাইলগুলো কপি করা (Fast Docker Caching-এর জন্য)
+COPY package*.json requirements.txt ./
+
+# ৪. Python প্যাকেজ ইনস্টল (flask, requests, beautifulsoup4, gunicorn ইত্যাদি)
+RUN pip install --no-cache-dir -r requirements.txt
+
+# ৫. Node.js প্যাকেজ ইনস্টল (express, axios, cheerio, cors ইত্যাদি)
+RUN npm ci --only=production || npm install
+
+# ৬. প্রজেক্টের বাকি সকল ফাইল কপি করা
 COPY . .
 
-# ১. Python প্যাকেজ ইনস্টল করা (requests, flask, flask-cors, gunicorn ইত্যাদি)
-RUN pip install --no-cache-dir flask flask-cors requests gunicorn
-
-# ২. Node.js প্যাকেজ ইনস্টল করা (express, cors, axios ইত্যাদি)
-RUN npm install express cors axios
-
-# পোর্ট এক্সপোজ করা (Render সাধারণত ১০০০০ পোর্ট ব্যবহার করে)
+# ৭. পোর্ট এক্সপোজ করা (Render-এর জন্য default 10000)
 EXPOSE 10000
 
-# অ্যাপ চালু করার কমান্ড (আপনার প্রধান ফাইলটি server.js হলে node server.js অথবা app.py হলে python app.py দিন)
+# ৮. Production Environment Variables
+ENV PORT=10000
+ENV NODE_ENV=production
+
+# ৯. অ্যাপ চালুর কমান্ড (Node.js Engine - server.js)
 CMD ["node", "server.js"]
