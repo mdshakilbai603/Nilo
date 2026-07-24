@@ -1,15 +1,65 @@
+const express = require('express');
+const axios = require('axios');
+const path = require('path');
+const cors = require('cors');
+const cheerio = require('cheerio');
+const puppeteer = require('puppeteer');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
+
+app.use(cors());
+app.use(express.json());
+app.use(express.static(__dirname));
+
+let browser;
+
+// Puppeteer Engine Initialization
+(async () => {
+    try {
+        browser = await puppeteer.launch({
+            headless: 'new',
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu',
+                '--window-size=1280,800'
+            ]
+        });
+        console.log("Nilo Browser Engine (Puppeteer Chromium) Ready!");
+    } catch (err) {
+        console.error("Puppeteer Launch Error:", err.message);
+    }
+})();
+
+const REAL_BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-Ch-Ua': '"Not/A)Brand";v="8", "Chromium";v="126", "Google Chrome";v="126"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"'
+};
+
+// Root Route
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Smart Proxy Route
 app.get('/proxy', async (req, res) => {
     let targetUrl = req.query.url;
     if (!targetUrl) {
         return res.status(400).send('URL parameter missing!');
     }
 
-    // URL ফরম্যাট ঠিক করা
     if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
         targetUrl = 'https://' + targetUrl;
     }
 
-    // Security Headers স্ট্রিপ করা
     res.removeHeader('X-Frame-Options');
     res.removeHeader('Content-Security-Policy');
     res.removeHeader('Strict-Transport-Security');
@@ -17,7 +67,7 @@ app.get('/proxy', async (req, res) => {
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.set('Access-Control-Allow-Headers', '*');
 
-    // GitHub বা জটিল সিকিউরিটি সাইটের জন্য সরাসরি Puppeteer ব্রাউজার ব্যবহার
+    // GitHub, ChatGPT বা Facebook-এর মতো সিকিউরড সাইট হলে সরাসরি Puppeteer দিয়ে রান হবে
     const isHighSecuritySite = targetUrl.includes('github.com') || 
                                targetUrl.includes('chatgpt.com') || 
                                targetUrl.includes('facebook.com');
@@ -37,7 +87,6 @@ app.get('/proxy', async (req, res) => {
             if (contentType.includes('text/html')) {
                 const $ = cheerio.load(response.data.toString('utf-8'));
 
-                // <a> ট্যাগ রিরাইট
                 $('a[href]').each((_, el) => {
                     const href = $(el).attr('href');
                     if (href && !href.startsWith('javascript:') && !href.startsWith('#')) {
@@ -57,15 +106,14 @@ app.get('/proxy', async (req, res) => {
         }
     }
 
-    // Puppeteer Engine Fallback
+    // High Security Site / Fallback Puppeteer Engine
     if (!browser) {
-        return res.status(503).send('Browser Engine is initializing. Please refresh.');
+        return res.status(503).send('Browser Engine is initializing. Please refresh in a moment.');
     }
 
     try {
         const page = await browser.newPage();
         
-        // Stealth Headers & Bypass
         await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36');
         await page.setViewport({ width: 1280, height: 800 });
 
@@ -76,11 +124,9 @@ app.get('/proxy', async (req, res) => {
 
         const $ = cheerio.load(content);
 
-        // Security tags সরাতে
         $('meta[http-equiv="Content-Security-Policy"]').remove();
         $('meta[http-equiv="X-Frame-Options"]').remove();
 
-        // <a> ট্যাগ রিরাইট
         $('a[href]').each((_, el) => {
             const href = $(el).attr('href');
             if (href && !href.startsWith('javascript:') && !href.startsWith('#')) {
@@ -102,4 +148,20 @@ app.get('/proxy', async (req, res) => {
             </div>
         `);
     }
+});
+
+// AI API Endpoints
+app.post('/api/node', (req, res) => {
+    const userQuery = req.body.query || '';
+    res.json({ reply: `Nilo AI (Node.js Engine) processed query: '${userQuery}' successfully.` });
+});
+
+app.post('/api/ai', (req, res) => {
+    const userQuery = req.body.query || '';
+    res.json({ reply: `Nilo AI (Python Fallback Engine) received: '${userQuery}'` });
+});
+
+// Server Start
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Nilo Browser Server running on port ${PORT}`);
 });
