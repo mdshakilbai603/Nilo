@@ -2,11 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Nilo Browser</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nilo Browser Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; }
         body { display: flex; flex-direction: column; height: 100vh; overflow: hidden; background: #dee1e6; transition: background 0.3s; }
+
+        /* Real-Time Loading Bar */
+        #loading-bar { position: absolute; top: 0; left: 0; height: 3px; background: #1a73e8; width: 0%; transition: width 0.3s ease, opacity 0.3s; z-index: 9999; }
 
         /* Theme Variables */
         body.dark-mode { background: #202124; color: #f1f3f4; }
@@ -31,7 +35,7 @@
         body.dark-mode .brand-title { color: #8ab4f8; }
 
         /* Tab Bar */
-        .tab-bar { display: flex; align-items: center; background: #dee1e6; padding: 8px 8px 0 8px; gap: 4px; user-select: none; }
+        .tab-bar { display: flex; align-items: center; background: #dee1e6; padding: 8px 8px 0 8px; gap: 4px; user-select: none; position: relative; }
         .tabs-container { display: flex; gap: 4px; overflow-x: auto; max-width: calc(100% - 160px); }
         .tab { display: flex; align-items: center; gap: 8px; background: #d0d4dc; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 12px; color: #3c4043; cursor: pointer; width: 180px; justify-content: space-between; transition: 0.2s; }
         .tab.active { background: #ffffff; color: #1a73e8; font-weight: 600; }
@@ -115,6 +119,9 @@
 </head>
 <body>
 
+    <!-- Real-Time Top Loading Bar -->
+    <div id="loading-bar"></div>
+
     <!-- Tab Bar -->
     <div class="tab-bar">
         <div class="brand-title"><i class="fa-solid fa-compass"></i> Nilo</div>
@@ -162,7 +169,6 @@
 
                 <div class="menu-divider"></div>
 
-                <!-- Page Viewing & Control Options -->
                 <div class="menu-item" onclick="togglePictureInPicture()">
                     <span><i class="fa-solid fa-clone"></i> Picture-in-Picture (PiP)</span>
                 </div>
@@ -178,7 +184,6 @@
 
                 <div class="menu-divider"></div>
 
-                <!-- Media & File Tools -->
                 <div class="menu-item" onclick="sniffMedia()">
                     <span><i class="fa-solid fa-circle-down"></i> Media Downloader</span>
                 </div>
@@ -191,7 +196,6 @@
 
                 <div class="menu-divider"></div>
 
-                <!-- Personalization & Appearance -->
                 <div class="menu-item">
                     <span><i class="fa-solid fa-palette"></i> Custom Themes</span>
                     <div class="theme-controls">
@@ -207,7 +211,6 @@
 
                 <div class="menu-divider"></div>
 
-                <!-- Managers & Security -->
                 <div class="menu-item" onclick="openInternalPage('bookmarks', 'Bookmarks')">
                     <span><i class="fa-regular fa-star"></i> Bookmarks Manager</span>
                 </div>
@@ -226,7 +229,6 @@
 
                 <div class="menu-divider"></div>
 
-                <!-- Page Actions -->
                 <div class="menu-item" onclick="copyURL()">
                     <span><i class="fa-solid fa-link"></i> Copy Address</span>
                 </div>
@@ -262,7 +264,7 @@
     <div class="main-workspace">
         <div class="views-container" id="views-container"></div>
         
-        <!-- Custom AI Panel with API Selector -->
+        <!-- Custom AI Panel -->
         <div id="ai-panel" class="ai-panel">
             <h3><i class="fa-solid fa-sparkles"></i> Nilo AI Assistant</h3>
             <p style="font-size:12px; color:#666; margin-top:8px;">Select API Engine & Query backend.</p>
@@ -280,6 +282,14 @@
     </div>
 
     <script>
+        // Native Chrome User-Agent Overrides (Bot Evasion)
+        const CHROME_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36";
+        
+        // Stealth Execution: Overriding Native Navigator Properties
+        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+        Object.defineProperty(navigator, 'userAgent', { get: () => CHROME_USER_AGENT });
+        Object.defineProperty(navigator, 'vendor', { get: () => "Google Inc." });
+
         let tabCount = 0;
         let activeTabId = null;
         let zoomFactor = 1.0;
@@ -295,8 +305,8 @@
         const addressInput = document.getElementById('address-input');
         const aiPanel = document.getElementById('ai-panel');
         const chromeMenu = document.getElementById('chrome-menu');
+        const loadingBar = document.getElementById('loading-bar');
 
-        // Top 12 Websites Data Grid
         const top12Websites = [
             { name: "Google", url: "https://www.google.com", icon: "fa-brands fa-google", color: "#4285F4" },
             { name: "YouTube", url: "https://www.youtube.com", icon: "fa-brands fa-youtube", color: "#FF0000" },
@@ -314,9 +324,24 @@
 
         renderBookmarksBar();
 
-        // ----------------------------------------------------
-        // Dynamic API Call Handler
-        // ----------------------------------------------------
+        // Real-Time Visual Progress Animation
+        function startLoading() {
+            loadingBar.style.opacity = '1';
+            loadingBar.style.width = '30%';
+        }
+
+        function updateLoading(percent) {
+            loadingBar.style.width = percent + '%';
+        }
+
+        function stopLoading() {
+            loadingBar.style.width = '100%';
+            setTimeout(() => {
+                loadingBar.style.opacity = '0';
+                loadingBar.style.width = '0%';
+            }, 300);
+        }
+
         async function submitBackendAPI() {
             const engine = document.getElementById('api-engine').value;
             const query = document.getElementById('ai-query-input').value;
@@ -327,17 +352,13 @@
                 return;
             }
 
-            responseBox.innerText = "Connecting to API...";
+            responseBox.innerText = "Connecting to API Engine...";
+            startLoading();
 
-            // স্বয়ংক্রিয়ভাবে বর্তমান ডোমেইন সনাক্তকরণ (Render/Localhost)
-            let endpoint = '';
-            if (engine === 'js') {
-                endpoint = window.location.origin + '/api/node';
-            } else if (engine === 'python') {
-                endpoint = 'http://localhost:5000/api/ai';
-            }
+            let endpoint = (engine === 'js') ? (window.location.origin + '/api/node') : 'http://localhost:5000/api/ai';
 
             try {
+                updateLoading(60);
                 const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -347,6 +368,8 @@
                 responseBox.innerText = `[${engine.toUpperCase()} Response]: ` + JSON.stringify(data.reply || data);
             } catch (err) {
                 responseBox.innerText = `Error connecting to ${engine.toUpperCase()} Backend API.`;
+            } finally {
+                stopLoading();
             }
         }
 
@@ -371,13 +394,26 @@
                 pageEl.innerHTML = renderInternalPageContent('speeddial');
                 viewsContainer.appendChild(pageEl);
             } else {
+                startLoading();
                 const iframeEl = document.createElement('iframe');
                 iframeEl.id = tabId;
                 
-                // Proxy দিয়ে ওয়েবসাইট লোড করা হচ্ছে যেন Frame Security ব্লক না করে
+                // Enhanced Sandbox Security Policy
+                iframeEl.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads');
+                
                 const proxiedUrl = url.startsWith('http') ? (window.location.origin + '/proxy?url=' + encodeURIComponent(url)) : url;
                 iframeEl.src = proxiedUrl;
                 
+                iframeEl.onload = () => {
+                    stopLoading();
+                    try {
+                        const host = new URL(url).hostname;
+                        document.getElementById(`title-${tabId}`).innerText = host || 'Loaded Page';
+                    } catch(e) {
+                        document.getElementById(`title-${tabId}`).innerText = 'Loaded Page';
+                    }
+                };
+
                 viewsContainer.appendChild(iframeEl);
 
                 if (!historyList.includes(url)) {
@@ -394,8 +430,10 @@
             const activeView = getActiveView();
             const proxiedUrl = url.startsWith('http') ? (window.location.origin + '/proxy?url=' + encodeURIComponent(url)) : url;
 
-            if (activeView && activeView.tagName.toLowerCase() === 'iframe') {
+            startLoading();
+            if (activeView && activeView.tagName && activeView.tagName.toLowerCase() === 'iframe') {
                 activeView.src = proxiedUrl;
+                activeView.onload = () => stopLoading();
             } else {
                 createNewTab(url);
             }
@@ -554,7 +592,7 @@
             } else if (type === 'speeddial') {
                 contentHTML += `
                     <div class="speed-dial-container">
-                        <h2 style="font-size:28px; color:#1a73e8;"><i class="fa-solid fa-compass"></i> Welcome to Nilo</h2>
+                        <h2 style="font-size:28px; color:#1a73e8;"><i class="fa-solid fa-compass"></i> Welcome to Nilo Pro</h2>
                         <p style="color:#666; margin-top:6px; font-size:13px;">Top 12 Most Visited Platforms</p>
                         <div class="speed-dial-grid">`;
 
@@ -605,7 +643,6 @@
                 activeTabId = tabId;
 
                 if(currentView.tagName && currentView.tagName.toLowerCase() === 'iframe') {
-                    // প্রক্সি ফ্রি আসল URL অ্যাড্রেস বারে প্রদর্শন
                     let rawUrl = currentView.src || '';
                     if (rawUrl.includes('/proxy?url=')) {
                         rawUrl = decodeURIComponent(rawUrl.split('/proxy?url=')[1]);
@@ -650,7 +687,10 @@
 
         function reloadCurrent() {
             const activeView = getActiveView();
-            if(activeView && activeView.src) activeView.src = activeView.src;
+            if(activeView && activeView.src) {
+                startLoading();
+                activeView.src = activeView.src;
+            }
         }
 
         function handleNavigate(e) {
@@ -739,7 +779,6 @@
             }
         }
 
-        // Keybindings Listener for Ctrl+F Search
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey && e.key === 'f') {
                 e.preventDefault();
