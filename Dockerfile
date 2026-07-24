@@ -1,19 +1,20 @@
 FROM nikolaik/python-nodejs:python3.11-nodejs20-slim
 
-# Puppeteer/Chrome চালানোর জন্য প্রয়োজনীয় প্যাকেজ
+# Chromium এবং প্রয়োজনীয় সকল সাপোর্ট প্যাকেজ ইন্সটল
 RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    procps \
-    libsq3-0 \
-    libgconf-2-4 \
-    libxv1 \
-    libgtk-3-0 \
-    libgbm-dev \
-    libnss3 \
-    libasound2 \
-    --no-install-recommends && rm -rf /var/lib/apt/lists/*
+    chromium \
+    fonts-ipafont-gothic \
+    fonts-wqy-zenhei \
+    fonts-thai-tlwg \
+    fonts-kacst \
+    fonts-freefont-ttf \
+    libxss1 \
+    --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/*
+
+# Puppeteer-কে সিস্টেম ক্রোমিয়াম ব্যবহার করার নির্দেশনা দেওয়া
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 WORKDIR /app
 
